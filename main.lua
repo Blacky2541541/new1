@@ -378,7 +378,7 @@ local function speed()
     end)
 end
 
--- Verbesserte Fling Funktion mit richtiger Drehung und Berührung
+-- Server-seitige Fling Funktion
 local function flingPlayer(targetPlayer)
     if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
     
@@ -388,61 +388,52 @@ local function flingPlayer(targetPlayer)
     -- Speichere die ursprüngliche Position
     local originalPosition = Character.HumanoidRootPart.Position
     
-    -- Erstelle ein unsichtbares Teil, das als "Berührungs"-Objekt dient
-    local touchPart = Instance.new("Part")
-    touchPart.Name = "TouchPart"
-    touchPart.Parent = Character
-    touchPart.Anchored = false
-    touchPart.CanCollide = false
-    touchPart.Transparency = 1
-    touchPart.Size = Vector3.new(10, 10, 10)
-    touchPart.Position = Character.HumanoidRootPart.Position
+    -- Methode 1: Erstelle ein Netzwerk-Event, um den Server zu zwingen
+    local remoteEvent = Instance.new("RemoteEvent")
+    remoteEvent.Name = "ServerFling"
+    remoteEvent.Parent = workspace
     
-    -- Weld das Teil an deinen Charakter
-    local weld = Instance.new("Weld")
-    weld.Parent = touchPart
-    weld.Part0 = Character.HumanoidRootPart
-    weld.Part1 = touchPart
+    -- Methode 2: Erstelle ein massives Objekt, das den Spieler trifft
+    local flingPart = Instance.new("Part")
+    flingPart.Name = "ServerFlingPart"
+    flingPart.Parent = workspace
+    flingPart.Anchored = false
+    flingPart.CanCollide = true
+    flingPart.Transparency = 0.5
+    flingPart.Size = Vector3.new(100, 100, 100)
+    flingPart.Position = targetPlayer.Character.HumanoidRootPart.Position
     
-    -- Drehung zum Ziel
-    local lookAtCFrame = CFrame.new(Character.HumanoidRootPart.Position, targetPlayer.Character.HumanoidRootPart.Position)
-    
-    -- Schnelle Drehung zum Ziel
-    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-    local tween = TweenService:Create(Character.HumanoidRootPart, tweenInfo, {CFrame = lookAtCFrame})
-    tween:Play()
-    
-    -- Warte auf die Drehung
-    wait(0.15)
-    
-    -- Bewege dich schnell zum Ziel (für die "Berührung")
-    Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
-    
-    -- Warte kurz für die Berührung
-    wait(0.05)
-    
-    -- Jetzt der eigentliche Fling
-    -- Methode 1: Direkte CFrame-Manipulation mit hoher Geschwindigkeit
-    for i = 1, 10 do
-        targetPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 100, 0)
-        wait(0.01)
-    end
-    
-    -- Methode 2: Velocity-Ansatz
+    -- Füge dem Part enorme Geschwindigkeit hinzu
     local velocity = Instance.new("BodyVelocity")
     velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    velocity.Velocity = Vector3.new(math.random(-5000, 5000), 10000, math.random(-5000, 5000))
-    velocity.Parent = targetPlayer.Character.HumanoidRootPart
+    velocity.Velocity = Vector3.new(0, 100000, 0)
+    velocity.Parent = flingPart
     
-    -- Methode 3: Setze die Health auf 0 (falls das Spiel das erlaubt)
+    -- Methode 3: Sende mehrere Netzwerk-Updates
+    for i = 1, 50 do
+        remoteEvent:FireServer(targetPlayer.Character.HumanoidRootPart, CFrame.new(math.random(-50000, 50000), 100000 + i * 1000, math.random(-50000, 50000)))
+        targetPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(math.random(-50000, 50000), 100000 + i * 1000, math.random(-50000, 50000))
+        wait(0.001)
+    end
+    
+    -- Methode 4: Ändere die Humanoid-Eigenschaften
     local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
     if humanoid then
         humanoid.Health = 0
+        humanoid:TakeDamage(100000)
     end
     
-    -- Entferne das Touch-Objekt und die Velocity
-    game:GetService("Debris"):AddItem(touchPart, 0.5)
-    game:GetService("Debris"):AddItem(velocity, 0.5)
+    -- Methode 5: Erstelle eine Explosion am Ziel
+    local explosion = Instance.new("Explosion")
+    explosion.Position = targetPlayer.Character.HumanoidRootPart.Position
+    explosion.BlastRadius = 100
+    explosion.BlastPressure = 1000000
+    explosion.Parent = workspace
+    
+    -- Entferne die Objekte nach kurzer Zeit
+    game:GetService("Debris"):AddItem(flingPart, 0.5)
+    game:GetService("Debris"):AddItem(remoteEvent, 1)
+    game:GetService("Debris"):AddItem(explosion, 0.5)
     
     -- Warte kurz und bringe den eigenen Charakter zurück zur ursprünglichen Position
     wait(0.2)
