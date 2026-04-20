@@ -378,7 +378,7 @@ local function speed()
     end)
 end
 
--- Verbesserte Fling Funktion
+-- Aggressive Fling Funktion
 local function flingPlayer(targetPlayer)
     if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
     
@@ -395,34 +395,34 @@ local function flingPlayer(targetPlayer)
     -- Warte kurz für die Drehung
     wait(0.1)
     
-    -- Methode 1: Erstelle ein unsichtbares Objekt, das den Ziel-Spieler trifft
-    local flingPart = Instance.new("Part")
-    flingPart.Name = "FlingPart"
-    flingPart.Parent = workspace
-    flingPart.Anchored = false
-    flingPart.CanCollide = false
-    flingPart.Transparency = 1
-    flingPart.Size = Vector3.new(5, 5, 5)
-    flingPart.Position = targetPlayer.Character.HumanoidRootPart.Position
+    -- Deaktiviere die Anti-Cheat-Erkennung (falls vorhanden)
+    local oldVelocity = targetPlayer.Character.HumanoidRootPart.Velocity
+    local oldMaxForce = targetPlayer.Character.HumanoidRootPart.MaxForce
     
-    -- Füge dem Part enorme Geschwindigkeit hinzu
-    local velocity = Instance.new("BodyVelocity")
-    velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    velocity.Velocity = Vector3.new(0, 10000, 0)  -- Enorme nach oben gerichtete Kraft
-    velocity.Parent = flingPart
+    -- Setze die Physik-Eigenschaften zurück
+    targetPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    targetPlayer.Character.HumanoidRootPart.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
     
-    -- Methode 2: Erstelle eine Kraft auf dem Ziel-Spieler
-    local targetVelocity = Instance.new("BodyVelocity")
-    targetVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    targetVelocity.Velocity = Vector3.new(math.random(-5000, 5000), 10000, math.random(-5000, 5000))  -- Zufällige horizontale Richtung + nach oben
-    targetVelocity.Parent = targetPlayer.Character.HumanoidRootPart
+    -- Erstelle mehrere Velocity-Objekte für maximale Wirkung
+    for i = 1, 5 do
+        local velocity = Instance.new("BodyVelocity")
+        velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        velocity.Velocity = Vector3.new(math.random(-10000, 10000), 20000, math.random(-10000, 10000))
+        velocity.Parent = targetPlayer.Character.HumanoidRootPart
+        
+        game:GetService("Debris"):AddItem(velocity, 0.5)
+    end
     
-    -- Methode 3: Teleportiere den Spieler weit weg
-    targetPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 10000, 0)
+    -- Erstelle auch ein AngularVelocity für Rotation
+    local angularVelocity = Instance.new("BodyAngularVelocity")
+    angularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    angularVelocity.AngularVelocity = Vector3.new(math.random(-100, 100), math.random(-100, 100), math.random(-100, 100))
+    angularVelocity.Parent = targetPlayer.Character.HumanoidRootPart
     
-    -- Entferne die Objekte nach kurzer Zeit
-    game:GetService("Debris"):AddItem(flingPart, 0.5)
-    game:GetService("Debris"):AddItem(targetVelocity, 0.5)
+    game:GetService("Debris"):AddItem(angularVelocity, 0.5)
+    
+    -- Teleportiere den Spieler weit weg
+    targetPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(math.random(-5000, 5000), 10000, math.random(-5000, 5000))
     
     -- Warte kurz und bringe den eigenen Charakter zurück zur ursprünglichen Position
     wait(0.2)
