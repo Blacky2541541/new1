@@ -378,7 +378,7 @@ local function speed()
     end)
 end
 
--- Aggressive Fling Funktion
+-- Verbesserte Fling Funktion mit richtiger Drehung und Berührung
 local function flingPlayer(targetPlayer)
     if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
     
@@ -388,41 +388,61 @@ local function flingPlayer(targetPlayer)
     -- Speichere die ursprüngliche Position
     local originalPosition = Character.HumanoidRootPart.Position
     
+    -- Erstelle ein unsichtbares Teil, das als "Berührungs"-Objekt dient
+    local touchPart = Instance.new("Part")
+    touchPart.Name = "TouchPart"
+    touchPart.Parent = Character
+    touchPart.Anchored = false
+    touchPart.CanCollide = false
+    touchPart.Transparency = 1
+    touchPart.Size = Vector3.new(10, 10, 10)
+    touchPart.Position = Character.HumanoidRootPart.Position
+    
+    -- Weld das Teil an deinen Charakter
+    local weld = Instance.new("Weld")
+    weld.Parent = touchPart
+    weld.Part0 = Character.HumanoidRootPart
+    weld.Part1 = touchPart
+    
     -- Drehung zum Ziel
     local lookAtCFrame = CFrame.new(Character.HumanoidRootPart.Position, targetPlayer.Character.HumanoidRootPart.Position)
-    Character.HumanoidRootPart.CFrame = lookAtCFrame
     
-    -- Warte kurz für die Drehung
-    wait(0.1)
+    -- Schnelle Drehung zum Ziel
+    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+    local tween = TweenService:Create(Character.HumanoidRootPart, tweenInfo, {CFrame = lookAtCFrame})
+    tween:Play()
     
-    -- Deaktiviere die Anti-Cheat-Erkennung (falls vorhanden)
-    local oldVelocity = targetPlayer.Character.HumanoidRootPart.Velocity
-    local oldMaxForce = targetPlayer.Character.HumanoidRootPart.MaxForce
+    -- Warte auf die Drehung
+    wait(0.15)
     
-    -- Setze die Physik-Eigenschaften zurück
-    targetPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-    targetPlayer.Character.HumanoidRootPart.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    -- Bewege dich schnell zum Ziel (für die "Berührung")
+    Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
     
-    -- Erstelle mehrere Velocity-Objekte für maximale Wirkung
-    for i = 1, 5 do
-        local velocity = Instance.new("BodyVelocity")
-        velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        velocity.Velocity = Vector3.new(math.random(-10000, 10000), 20000, math.random(-10000, 10000))
-        velocity.Parent = targetPlayer.Character.HumanoidRootPart
-        
-        game:GetService("Debris"):AddItem(velocity, 0.5)
+    -- Warte kurz für die Berührung
+    wait(0.05)
+    
+    -- Jetzt der eigentliche Fling
+    -- Methode 1: Direkte CFrame-Manipulation mit hoher Geschwindigkeit
+    for i = 1, 10 do
+        targetPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 100, 0)
+        wait(0.01)
     end
     
-    -- Erstelle auch ein AngularVelocity für Rotation
-    local angularVelocity = Instance.new("BodyAngularVelocity")
-    angularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-    angularVelocity.AngularVelocity = Vector3.new(math.random(-100, 100), math.random(-100, 100), math.random(-100, 100))
-    angularVelocity.Parent = targetPlayer.Character.HumanoidRootPart
+    -- Methode 2: Velocity-Ansatz
+    local velocity = Instance.new("BodyVelocity")
+    velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    velocity.Velocity = Vector3.new(math.random(-5000, 5000), 10000, math.random(-5000, 5000))
+    velocity.Parent = targetPlayer.Character.HumanoidRootPart
     
-    game:GetService("Debris"):AddItem(angularVelocity, 0.5)
+    -- Methode 3: Setze die Health auf 0 (falls das Spiel das erlaubt)
+    local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        humanoid.Health = 0
+    end
     
-    -- Teleportiere den Spieler weit weg
-    targetPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(math.random(-5000, 5000), 10000, math.random(-5000, 5000))
+    -- Entferne das Touch-Objekt und die Velocity
+    game:GetService("Debris"):AddItem(touchPart, 0.5)
+    game:GetService("Debris"):AddItem(velocity, 0.5)
     
     -- Warte kurz und bringe den eigenen Charakter zurück zur ursprünglichen Position
     wait(0.2)
