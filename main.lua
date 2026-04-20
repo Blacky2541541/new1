@@ -191,6 +191,18 @@ PlayerTrackerToggle.Text = "Tracker: OFF"
 PlayerTrackerToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlayerTrackerToggle.TextSize = 14
 
+local FlingToggle = Instance.new("TextButton")
+FlingToggle.Name = "FlingToggle"
+FlingToggle.Parent = MainContent
+FlingToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+FlingToggle.BorderSizePixel = 0
+FlingToggle.Position = UDim2.new(0, 20, 0, 220)  -- Position unter den anderen Toggles
+FlingToggle.Size = UDim2.new(0, 100, 0, 30)
+FlingToggle.Font = Enum.Font.Gotham
+FlingToggle.Text = "Fling: OFF"
+FlingToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+FlingToggle.TextSize = 14
+
 local FindMurderToggle = Instance.new("TextButton")
 FindMurderToggle.Name = "FindMurderToggle"
 FindMurderToggle.Parent = MainContent
@@ -250,6 +262,8 @@ PlayerEspToggle.Text = "Player ESP: OFF"
 PlayerEspToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlayerEspToggle.TextSize = 14
 
+
+
 -- Combat Tab Content
 local CombatContent = Instance.new("ScrollingFrame")
 CombatContent.Name = "CombatContent"
@@ -292,6 +306,9 @@ local trackerConnection = nil
 local trackerGui = nil
 local sheriff = nil
 local findSheriffEnabled = false
+local flingEnabled = false
+local flingTarget = nil
+local flingGui = nil
 
 -- Fly Funktion (korrigiert)
 local function fly()
@@ -359,6 +376,39 @@ local function speed()
         
         Humanoid.WalkSpeed = flySpeed * 10
     end)
+end
+
+-- Fling Funktion
+local function flingPlayer(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local Character = LocalPlayer.Character
+    if not Character or not Character:FindFirstChild("HumanoidRootPart") then return end
+    
+    -- Speichere die ursprüngliche Position
+    local originalPosition = Character.HumanoidRootPart.Position
+    
+    -- Bewege den Spieler zum Ziel
+    Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2)
+    
+    -- Warte kurz, damit die Position aktualisiert wird
+    wait(0.1)
+    
+    -- Wende eine enorme Kraft auf das Ziel an
+    local velocity = Instance.new("BodyVelocity")
+    velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    velocity.Velocity = Vector3.new(0, 10000, 0)  -- Enorme nach oben gerichtete Kraft
+    velocity.Parent = targetPlayer.Character.HumanoidRootPart
+    
+    -- Entferne die Velocity nach kurzer Zeit
+    game:GetService("Debris"):AddItem(velocity, 0.1)
+    
+    -- Alternative Methode: Direkte CFrame-Manipulation
+    targetPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 10000, 0)  -- Teleportiere den Spieler weit nach oben
+    
+    -- Warte kurz und bringe den eigenen Charakter zurück zur ursprünglichen Position
+    wait(0.2)
+    Character.HumanoidRootPart.CFrame = CFrame.new(originalPosition)
 end
 
 -- NoClip Funktion (verbessert)
@@ -807,6 +857,119 @@ local function createTrackerUI()
     return trackerGui
 end
 
+-- Erstelle die Fling UI
+local function createFlingUI()
+    if flingGui then
+        flingGui:Destroy()
+    end
+    
+    flingGui = Instance.new("ScreenGui")
+    flingGui.Name = "FlingGui"
+    flingGui.Parent = ScreenGui.Parent  -- Verwende denselben Parent wie die Haupt-UI
+    flingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    local FlingFrame = Instance.new("Frame")
+    FlingFrame.Name = "FlingFrame"
+    FlingFrame.Parent = flingGui
+    FlingFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    FlingFrame.BorderSizePixel = 0
+    FlingFrame.Position = UDim2.new(0, 520, 0.5, -150)  -- Position neben der Haupt-UI
+    FlingFrame.Size = UDim2.new(0, 250, 0, 300)
+    FlingFrame.Active = true
+    FlingFrame.Draggable = true
+    
+    local FlingTitle = Instance.new("TextLabel")
+    FlingTitle.Name = "FlingTitle"
+    FlingTitle.Parent = FlingFrame
+    FlingTitle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    FlingTitle.BorderSizePixel = 0
+    FlingTitle.Position = UDim2.new(0, 0, 0, 0)
+    FlingTitle.Size = UDim2.new(0, 250, 0, 30)
+    FlingTitle.Font = Enum.Font.GothamBold
+    FlingTitle.Text = "Player Fling"
+    FlingTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FlingTitle.TextSize = 18
+    
+    local CloseFlingButton = Instance.new("TextButton")
+    CloseFlingButton.Name = "CloseFlingButton"
+    CloseFlingButton.Parent = FlingFrame
+    CloseFlingButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    CloseFlingButton.BorderSizePixel = 0
+    CloseFlingButton.Position = UDim2.new(0, 220, 0, 5)
+    CloseFlingButton.Size = UDim2.new(0, 25, 0, 20)
+    CloseFlingButton.Font = Enum.Font.SourceSans
+    CloseFlingButton.Text = "X"
+    CloseFlingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseFlingButton.TextSize = 14
+    
+    local PlayerListFrame = Instance.new("ScrollingFrame")
+    PlayerListFrame.Name = "PlayerListFrame"
+    PlayerListFrame.Parent = FlingFrame
+    PlayerListFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    PlayerListFrame.BorderSizePixel = 0
+    PlayerListFrame.Position = UDim2.new(0, 0, 0, 30)
+    PlayerListFrame.Size = UDim2.new(0, 250, 0, 270)
+    PlayerListFrame.ScrollBarThickness = 5
+    
+    -- Fülle die Spielerliste
+    local function updatePlayerList()
+        -- Lösche alte Einträge
+        for _, child in ipairs(PlayerListFrame:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
+            end
+        end
+        
+        -- Füge alle Spieler hinzu
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local PlayerButton = Instance.new("TextButton")
+                PlayerButton.Name = "PlayerButton"
+                PlayerButton.Parent = PlayerListFrame
+                PlayerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                PlayerButton.BorderSizePixel = 0
+                PlayerButton.Position = UDim2.new(0, 10, 0, #PlayerListFrame:GetChildren() * 35)
+                PlayerButton.Size = UDim2.new(0, 230, 0, 30)
+                PlayerButton.Font = Enum.Font.Gotham
+                PlayerButton.Text = player.Name
+                PlayerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                PlayerButton.TextSize = 14
+                
+                -- Markiere das aktuelle Ziel
+                if flingTarget == player then
+                    PlayerButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+                end
+                
+                PlayerButton.MouseButton1Click:Connect(function()
+                    flingTarget = player
+                    flingPlayer(player)  -- Führe den Fling sofort aus
+                    updatePlayerList()  -- Aktualisiere die Liste, um die Markierung zu aktualisieren
+                end)
+            end
+        end
+        
+        -- Setze die CanvasSize basierend auf der Anzahl der Spieler
+        PlayerListFrame.CanvasSize = UDim2.new(0, 0, 0, #PlayerListFrame:GetChildren() * 35)
+    end
+    
+    -- Event Handler
+    CloseFlingButton.MouseButton1Click:Connect(function()
+        flingEnabled = false
+        flingTarget = nil
+        flingGui:Destroy()
+        flingGui = nil
+    end)
+    
+    -- Aktualisiere die Spielerliste, wenn ein Spieler hinzugefügt oder entfernt wird
+    Players.PlayerAdded:Connect(updatePlayerList)
+    Players.PlayerRemoving:Connect(updatePlayerList)
+    
+    -- Initiale Aktualisierung
+    updatePlayerList()
+    
+    return flingGui
+end
+
 -- Event Handler
 CloseButton.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
@@ -880,6 +1043,21 @@ PlayerTrackerToggle.MouseButton1Click:Connect(function()
         if trackerGui then
             trackerGui:Destroy()
             trackerGui = nil
+        end
+    end
+end)
+
+FlingToggle.MouseButton1Click:Connect(function()
+    flingEnabled = not flingEnabled
+    FlingToggle.Text = "Fling: " .. (flingEnabled and "ON" or "OFF")
+    
+    if flingEnabled then
+        createFlingUI()
+    else
+        flingTarget = nil
+        if flingGui then
+            flingGui:Destroy()
+            flingGui = nil
         end
     end
 end)
